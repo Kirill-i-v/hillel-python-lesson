@@ -1,1 +1,1 @@
-# hilel-first-lesson
+# hilel-python-lesson 
