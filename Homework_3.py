@@ -1,26 +1,49 @@
-students = {
-    1: {
-        "name": "John Doe",
-        "marks": [4, 5, 1, 4, 5, 2, 5],
-        "info": "John is 22 y.o. Hobbies: music",
-    },
-    2: {
-        "name": "Marry Black",
-        "marks": [4, 1, 3, 4, 5, 1, 2, 2],
-        "info": "Marry is 23 y.o. Hobbies: football",
-    },
-}
+import csv
+from pathlib import Path
+
+
+files_dir = Path(__name__).absolute().parent / "files"
+storage_file = "students.csv"
 
 LAST_ID_CONTEXT = 2
 
 
+class StudentsStorage:
+    def __init__(self) -> None:
+        self.students = self.read_csv(storage_file)
+
+    @staticmethod
+    def read_csv(filename: str) -> dict:
+        students = {}
+        with open(files_dir / filename, mode="r") as file:
+            reader = csv.DictReader(file, delimiter=";")
+            for row in reader:
+                students[row['id']] = {
+                    "name": row["name"],
+                    "marks": list(map(int, row["marks"].split(',')))
+                }
+        return students
+
+    @staticmethod
+    def write_csv(filename: str, data: dict) -> None:
+        with open(files_dir / filename, mode="w", newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=["id", "name", "marks"])
+            writer.writeheader()
+            for id_, student in data.items():
+                writer.writerow({"id": id_, "name": student["name"], "marks": ",".join(map(str, student["marks"]))})
+
+    def flush(self) -> None:
+        self.write_csv(storage_file, self.students)
+
+
 def represent_students():
-    for id_, student in students.items():
+    for id_, student in StudentsStorage().students.items():
         print(f"[{id_}] {student['name']}, marks: {student['marks']}")
 
 
 def add_student(student: dict) -> dict | None:
     global LAST_ID_CONTEXT
+    storage = StudentsStorage()
 
     if len(student) != 2:
         return None
@@ -28,34 +51,45 @@ def add_student(student: dict) -> dict | None:
         return None
     else:
         LAST_ID_CONTEXT += 1
-        students[LAST_ID_CONTEXT] = student
+        storage.students[str(LAST_ID_CONTEXT)] = student
 
+    storage.flush()
     return student
 
 
 def search_student(id_: int) -> dict | None:
-    return students.get(id_)
+    storage = StudentsStorage()
+    return storage.students.get(str(id_))
 
 
 def delete_student(id_: int):
+    storage = StudentsStorage()
+
     if search_student(id_):
-        del students[id_]
+        del storage.students[str(id_)]
         print(f"Student with id '{id_}' is deleted")
     else:
         print(f"There is no student with id '{id_}' in the storage")
 
 
 def update_student(id_: int, payload: dict) -> dict:
-    students[id_] = payload
+    storage = StudentsStorage()
+    storage.students[str(id_)] = payload
+    storage.flush()
+
     return payload
 
 
 def student_details(student: dict) -> None:
-    print(f"Detailed info: [{student['name']}] - Marks: {student['marks']}")
+    print(f"Detailed info: [{student['name']}]...")
 
 
 def parse(data: str) -> tuple[str, list[int]]:
+    """Return student name and marks.
 
+    user input template:
+    'John Doe;4,5,4,5,4,5'
+    """
     template = "John Doe;4,5,4,5,4,5"
 
     items = data.split(";")
@@ -63,6 +97,7 @@ def parse(data: str) -> tuple[str, list[int]]:
     if len(items) != 2:
         raise Exception(f"Incorrect data. Template: {template}")
 
+    # items == ["John Doe", "4,5...."]
     name, raw_marks = items
 
     try:
@@ -75,8 +110,16 @@ def parse(data: str) -> tuple[str, list[int]]:
 
 
 def ask_student_payload():
+    """
+    Input template:
+        'John Doe;4,5,4,5,4,5'
 
-    prompt = "Enter student's payload using the following template:\n'John Doe;4,5,4,5,4,5': "
+    Expected:
+        John Doe:       str
+        4,5,4,5,4,5:    list[int]
+    """
+
+    prompt = "Enter student's payload using next template:\n'John Doe;4,5,4,5,4,5': "
 
     if not (payload := parse(input(prompt))):
         return None
@@ -91,35 +134,35 @@ def handle_management_command(command: str):
         represent_students()
 
     elif command == "retrieve":
-        search_id = input("Enter student's ID to retrieve: ")
+        search_id = input("Enter student's id to retrieve: ")
 
         try:
             id_ = int(search_id)
         except ValueError as error:
-            raise Exception(f"ID '{search_id}' is not a valid value") from error
+            raise Exception(f"ID '{search_id}' is not correct value") from error
         else:
             if student := search_student(id_):
                 student_details(student)
             else:
-                print(f"There is no student with ID: '{id_}'")
+                print(f"There is no student with id: '{id_}'")
 
     elif command == "remove":
-        delete_id = input("Enter student's ID to remove: ")
+        delete_id = input("Enter student's id to remove: ")
 
         try:
             id_ = int(delete_id)
         except ValueError as error:
-            raise Exception(f"ID '{delete_id}' is not a valid value") from error
+            raise Exception(f"ID '{delete_id}' is not correct value") from error
         else:
             delete_student(id_)
 
     elif command == "change":
-        update_id = input("Enter student's ID you want to change: ")
+        update_id = input("Enter student's id you want to change: ")
 
         try:
             id_ = int(update_id)
         except ValueError as error:
-            raise Exception(f"ID '{update_id}' is not a valid value") from error
+            raise Exception(f"ID '{update_id}' is not correct value") from error
         else:
             if data := ask_student_payload():
                 update_student(id_, data)
@@ -127,7 +170,7 @@ def handle_management_command(command: str):
                 if student := search_student(id_):
                     student_details(student)
                 else:
-                    print(f"❌ Cannot change user with data {data}")
+                    print(f"❌ Can not change user with data {data}")
 
     elif command == "add":
         data = ask_student_payload()
@@ -138,53 +181,6 @@ def handle_management_command(command: str):
                 print(f"❌ Can't create user with data: {data}")
             else:
                 print(f"✅ New student '{student['name']}' is created")
-
-    elif command == "add_mark":
-        student_id = input("Enter student's ID to add a mark: ")
-
-        try:
-            id_ = int(student_id)
-        except ValueError as error:
-            raise Exception(f"ID '{student_id}' is not a valid value") from error
-        else:
-            if student := search_student(id_):
-                new_mark = input(f"Enter the new mark for {student['name']}: ")
-                try:
-                    mark = int(new_mark)
-                    student['marks'].append(mark)
-                    print(f"✅ Mark added to {student['name']}. Updated marks: {student['marks']}")
-                except ValueError:
-                    print("❌ Invalid mark. Please enter a numeric value.")
-            else:
-                print(f"There is no student with ID: '{id_}'")
-
-    elif command == "partial_update":
-        update_id = input("Enter student's ID for partial update: ")
-
-        try:
-            id_ = int(update_id)
-        except ValueError as error:
-            raise Exception(f"ID '{update_id}' is not a valid value") from error
-        else:
-            if student := search_student(id_):
-                print(f"Updating student {student['name']}")
-                name_input = input(f"Enter new name (or leave blank to keep '{student['name']}'): ")
-                marks_input = input(f"Enter new marks (comma separated, or leave blank to keep {student['marks']}): ")
-
-                if name_input:
-                    student['name'] = name_input
-                if marks_input:
-                    try:
-                        student['marks'] = [int(x) for x in marks_input.split(',')]
-                    except ValueError:
-                        print("❌ Invalid marks input. Please use numeric values separated by commas.")
-                        return
-
-                update_student(id_, student)
-                print(f"✅ Student data updated: {student}")
-            else:
-                print(f"There is no student with ID: '{id_}'")
-
     else:
         raise SystemExit(f"Unrecognized command: '{command}'")
 
@@ -192,7 +188,7 @@ def handle_management_command(command: str):
 def handle_user_input():
 
     system_commands = ("quit", "help")
-    management_commands = ("show", "add", "retrieve", "remove", "change", "add_mark", "partial_update")
+    management_commands = ("show", "add", "retrieve", "remove", "change")
     available_commands = system_commands + management_commands
 
     help_message = (
