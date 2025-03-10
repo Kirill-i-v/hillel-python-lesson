@@ -41,5 +41,5 @@ def process_schedule(posts: list[Post], channels: list[SocialChannel]) -> None:
 
 if __name__ == '__main__':
     posts = [Post("Hello World!", int(time()) - 1)]
-    channels = [YouTubeChannel(10), FacebookChannel(50), TwitterChannel(80)]
+    channels = [YouTubeChannel(15), FacebookChannel(50), TwitterChannel(80)]
     process_schedule(posts, channels)
