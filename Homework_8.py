@@ -8,6 +8,7 @@ lock = threading.Lock()
 
 def fill_list():
     global numbers
+    # Fill list with random numbers
     for _ in range(10_000):
         numbers.append(random.randint(1, 1000000))
 
@@ -33,7 +34,6 @@ def get_average():
 
 
 def run_t2():
-    # Wait until the list is filled
     while len(numbers) < 10_000:
         pass
     print("Sum of elements:", sum(numbers))
