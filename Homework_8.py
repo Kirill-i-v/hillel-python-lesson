@@ -8,7 +8,6 @@ lock = threading.Lock()
 
 def fill_list():
     global numbers
-    # Fill list with random numbers
     for _ in range(10_000):
         numbers.append(random.randint(1, 1000000))
 
